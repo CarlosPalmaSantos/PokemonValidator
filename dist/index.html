@@ -71,8 +71,6 @@ button.danger{color:var(--no)}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
 .chips button{font-size:.8rem;padding:4px 10px;min-height:32px;border-radius:99px}
 .chips button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.team{display:grid;gap:8px}
-.team .empty{font-size:.88rem;color:var(--muted)}
 .tm{display:grid;grid-template-columns:44px 1fr auto auto;align-items:center;gap:8px;background:var(--surface2);border-radius:10px;padding:4px 8px 4px 4px}
 .tm img,.tm .nospr{width:44px;height:44px;image-rendering:pixelated;object-fit:contain}
 .tm b{font-size:.92rem;display:block;line-height:1.2;cursor:pointer}
@@ -231,10 +229,6 @@ a.mon{text-decoration:none;color:inherit}
 .form-card b{display:block;line-height:1.15}
 .form-card small{display:block;color:var(--muted)}
 .form-card .form-tag{margin-top:4px}
-.teamgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
-.tcard{display:grid;grid-template-columns:56px 1fr auto;gap:8px;align-items:center;background:var(--surface2);border-radius:12px;padding:4px 8px 4px 4px}
-.tcard img,.tcard .nospr{width:56px;height:56px;image-rendering:pixelated;object-fit:contain}
-.tcard a{color:inherit;text-decoration:none;font-weight:650}
 .tcard .x{border:0;background:transparent;font-size:1.2rem;color:var(--muted)}
 .bignum{font-size:2rem;font-weight:800}
 @media (max-width:900px){.two{grid-template-columns:1fr}}
@@ -266,7 +260,6 @@ a.mon{text-decoration:none;color:inherit}
   <nav class="wrap tabs" id="tabs" aria-label="Secciones">
     <a href="#/validador" data-tab="validador">Validador</a>
     <a href="#/pokedex" data-tab="pokedex">Pokédex</a>
-    <a href="#/equipo" data-tab="equipo">Mi equipo <span class="count" id="teamCount"></span></a>
     <a href="#/reglas" data-tab="reglas">Reglas</a>
   </nav>
 </header>
@@ -541,15 +534,15 @@ a.mon{text-decoration:none;color:inherit}
   const PAGE = 120;
 
   // ---------- estado ----------
-  const defaults = { gameId: 'scarlet-violet', max: 450, min: null, mode: 'self', showAll: true, budget: null, team: {}, custom: {}, theme: null };
+  const defaults = { gameId: 'scarlet-violet', max: 600, min: null, mode: 'self', showAll: true, theme: null };
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(STORE) || '{}'); } catch (e) { /* sin almacenamiento */ }
   const state = Object.assign({}, defaults, saved);
   const ui = { q: '', selected: null, gameQ: '', dq: '', dtype: null, dfilter: 'all', dsort: 'dex', shown: PAGE };
   function persist() {
     try {
-      const { gameId, max, min, mode, showAll, budget, team, custom, theme } = state;
-      localStorage.setItem(STORE, JSON.stringify({ gameId, max, min, mode, showAll, budget, team, custom, theme }));
+      const { gameId, max, min, mode, showAll, theme } = state;
+      localStorage.setItem(STORE, JSON.stringify({ gameId, max, min, mode, showAll, theme }));
     } catch (e) { /* ignorar */ }
   }
 
@@ -558,7 +551,6 @@ a.mon{text-decoration:none;color:inherit}
   function allGames() {
     const out = DATA.pokeapi.games.map(g => ({ id: g.id, name: g.name, gen: g.gen, source: 'pokeapi', ref: g }));
     Object.values(DATA.essentials || {}).forEach(g => out.push({ id: g.id, name: g.name, source: 'essentials', note: g.note, ref: g }));
-    Object.values(state.custom).forEach(g => out.push({ id: g.id, name: g.name, source: 'custom', note: 'Cargado desde tu archivo pokemon.txt.', ref: g }));
     return out;
   }
   const getGame = id => allGames().find(g => g.id === id) || allGames()[0];
@@ -614,14 +606,11 @@ a.mon{text-decoration:none;color:inherit}
   const curDex = () => buildDex(getGame(state.gameId));
 
   // ---------- reglas ----------
-  const teamKeys = () => state.team[state.gameId] || (state.team[state.gameId] = []);
-  const teamTotal = dex => teamKeys().reduce((a, k) => a + ((dex.byKey.get(k) || {}).bst || 0), 0);
-  function evaluate(dex, m, total) {
+  function evaluate(dex, m) {
     const ref = state.mode === 'final' ? bestOf(dex, m) : m;
     const v = ref.bst; const reasons = []; let ok = true;
     if (state.max != null && v > state.max) { ok = false; reasons.push(`Supera el máximo en ${v - state.max} puntos`); }
     if (state.min != null && v < state.min) { ok = false; reasons.push(`Está ${state.min - v} puntos por debajo del mínimo`); }
-    if (state.budget != null && total + m.bst > state.budget && !teamKeys().includes(m.key)) { ok = false; reasons.push(`Superaría el presupuesto de equipo (${total + m.bst}/${state.budget})`); }
     return { ok, v, ref, reasons };
   }
   function ruleSummary() {
@@ -629,7 +618,6 @@ a.mon{text-decoration:none;color:inherit}
     if (state.max != null) p.push(`BST ≤ ${state.max}`);
     if (state.min != null) p.push(`BST ≥ ${state.min}`);
     p.push(state.mode === 'final' ? 'se mide la evolución más fuerte' : 'se mide el Pokémon encontrado');
-    if (state.budget != null) p.push(`equipo ≤ ${state.budget}`);
     return p.join(' · ');
   }
 
@@ -685,10 +673,10 @@ a.mon{text-decoration:none;color:inherit}
   }
 
   // ---------- ficha de Pokémon ----------
-  function evoTree(dex, m, total) {
+  function evoTree(dex, m) {
     const rootKey = dex.root(m.key);
     const node = k => {
-      const x = dex.byKey.get(k); const e = evaluate(dex, x, total);
+      const x = dex.byKey.get(k); const e = evaluate(dex, x);
       const kids = dex.children.get(k) || [];
       return `<div class="evo-node"><a class="evo-card ${k === m.key ? 'cur' : ''}" href="#/pokemon/${encodeURIComponent(k)}">${spr(x)}
         <b>${esc(x.name)}</b>${formBadge(x)}${typeTags(x.types)}<small><span class="dot ${e.ok ? 'ok' : 'no'}"></span>BST ${x.bst}</small></a>
@@ -697,13 +685,11 @@ a.mon{text-decoration:none;color:inherit}
     return node(rootKey);
   }
   function entryHtml(dex, m, full) {
-    const total = teamTotal(dex);
-    const ev = evaluate(dex, m, total);
+    const ev = evaluate(dex, m);
     const labels = m.special ? ['PS', 'Ataque', 'Defensa', 'Especial', null, 'Velocidad'] : STAT_NAMES;
     const rows = labels.map((l, i) => l ? `<div class="st"><i>${l}</i><b>${m.stats[i]}</b><div class="bar"><u style="width:${Math.min(100, m.stats[i] / 255 * 100)}%;background:${barColor(m.stats[i])}"></u></div></div>` : '').join('');
     const cmp = state.mode === 'final' ? (ev.ref.key !== m.key ? `Se compara con su evolución más fuerte: ${esc(ev.ref.name)} (${ev.v}).` : 'Es su evolución más fuerte.') : '';
     const detail = ev.ok ? (state.max != null ? `BST ${ev.v} ≤ ${state.max}${state.max - ev.v ? ` · te sobran ${state.max - ev.v}` : ''}` : 'Cumple todas las reglas.') : ev.reasons.join(' · ');
-    const inTeam = teamKeys().includes(m.key);
     let rel = '';
     if (full) {
       const parent = m.from && dex.byKey.get(m.from);
@@ -713,7 +699,7 @@ a.mon{text-decoration:none;color:inherit}
       if (kids.length && kids.length <= 2) bits.push('Evoluciona a ' + kids.map(k => `<a href="#/pokemon/${encodeURIComponent(k.key)}">${esc(k.name)}</a> (${esc(k.how || '?')})`).join(', ') + '.');
       if (kids.length > 2) bits.push(`Tiene ${kids.length} evoluciones (ver el árbol).`);
       if (!parent && !kids.length) bits.push('No evoluciona.');
-      rel = `<div class="sect"><h4>Evolución</h4><p class="rel">${bits.join(' ')}</p>${parent || kids.length ? `<div class="evo-wrap">${evoTree(dex, m, total)}</div>` : ''}</div>`;
+      rel = `<div class="sect"><h4>Evolución</h4><p class="rel">${bits.join(' ')}</p>${parent || kids.length ? `<div class="evo-wrap">${evoTree(dex, m)}</div>` : ''}</div>`;
 
       const species = m.species || m.key;
       const alternatives = dex.list.filter(x =>
@@ -722,7 +708,7 @@ a.mon{text-decoration:none;color:inherit}
       );
       if (alternatives.length) {
         rel += `<div class="sect"><h4>Formas alternativas</h4><div class="form-grid">${alternatives.map(x => {
-          const xe = evaluate(dex, x, total);
+          const xe = evaluate(dex, x);
           const cardMechanic = x.mechanic ? ` mechanic-${esc(x.mechanic.toLowerCase())}` : (x.formType ? ` ${esc(x.formType)}` : '');
           return `<a class="form-card${cardMechanic}" href="#/pokemon/${encodeURIComponent(x.key)}">
             ${spr(x)}
@@ -744,10 +730,7 @@ a.mon{text-decoration:none;color:inherit}
         </div>
         <div class="stats">${rows}</div>
         <div class="bst"><span>BST total${m.special ? ' (Especial una vez)' : ''}</span><b>${m.bst}</b></div>
-        <div class="actions">
-          <button type="button" class="primary" data-add="${esc(m.key)}" ${inTeam ? 'disabled' : ''}>${inTeam ? 'Ya está en tu equipo' : 'Añadir a mi equipo'}</button>
-          ${full ? '' : `<a class="btn" href="#/pokemon/${encodeURIComponent(m.key)}">Ver ficha completa →</a>`}
-        </div>
+        ${full ? '' : `<div class="actions"><a class="btn" href="#/pokemon/${encodeURIComponent(m.key)}">Ver ficha completa →</a></div>`}
         ${rel}
       </div>
     </article>`;
@@ -772,10 +755,9 @@ a.mon{text-decoration:none;color:inherit}
       $('#vResult').innerHTML = m ? entryHtml(dex, m, false) : '<div class="placeholder">Escribe el nombre de un Pokémon para ver si puedes capturarlo en tu locke.</div>';
       const q = ui.q.trim(); const box = $('#vSuggest');
       if (!q) { box.innerHTML = ''; return; }
-      const total = teamTotal(dex);
       const rows = dex.list.filter(x => matches(x, q)).slice(0, 30);
       box.innerHTML = `<div class="panel"><h2>${rows.length ? 'Resultados' : 'Sin resultados'}</h2><div class="grid">${rows.map(x => {
-        const ev = evaluate(dex, x, total);
+        const ev = evaluate(dex, x);
         return `<button type="button" class="mon ${x.key === ui.selected ? 'sel' : ''}" data-select="${esc(x.key)}">${monInner(x, ev)}</button>`;
       }).join('')}</div>${!rows.length && getGame(state.gameId).source === 'pokeapi' && !state.showAll ? '<p class="empty-list">Puede que no esté en la Pokédex de este juego. Activa «Mostrar también Pokémon fuera de la Pokédex» en Reglas y juego.</p>' : ''}</div>`;
     },
@@ -814,7 +796,7 @@ a.mon{text-decoration:none;color:inherit}
       this.update();
     },
     update() {
-      const dex = curDex(); const total = teamTotal(dex);
+      const dex = curDex();
       const present = new Set(); dex.list.forEach(m => m.types.forEach(t => present.add(t)));
       const types = TYPE_ORDER.filter(t => present.has(t)).concat([...present].filter(t => !TYPE_ORDER.includes(t)));
       if (ui.dtype && !present.has(ui.dtype)) ui.dtype = null;
@@ -823,7 +805,7 @@ a.mon{text-decoration:none;color:inherit}
       document.querySelectorAll('#dFilter button').forEach(b => b.classList.toggle('on', b.dataset.f === ui.dfilter));
       let rows = dex.list.filter(m => matches(m, ui.dq) &&
         (!ui.dtype || m.types.includes(ui.dtype))
-      ).map(m => ({ m, ev: evaluate(dex, m, total) }));
+      ).map(m => ({ m, ev: evaluate(dex, m) }));
       if (ui.dfilter === 'ok') rows = rows.filter(r => r.ev.ok);
       if (ui.dfilter === 'no') rows = rows.filter(r => !r.ev.ok);
       rows.sort({
@@ -861,29 +843,6 @@ a.mon{text-decoration:none;color:inherit}
     update() { route(true); }
   };
 
-  views.equipo = {
-    html: () => {
-      const dex = curDex(); const keys = teamKeys().filter(k => dex.byKey.has(k));
-      if (!keys.length) return '<div class="view-head"><h2>Mi equipo</h2></div><div class="placeholder">Aún no has añadido capturas en este juego. Búscalas en el <a href="#/validador">Validador</a> o la <a href="#/pokedex">Pokédex</a> y pulsa «Añadir a mi equipo».</div>';
-      const total = keys.reduce((a, k) => a + dex.byKey.get(k).bst, 0);
-      const over = state.budget != null && total > state.budget;
-      const types = {}; keys.forEach(k => dex.byKey.get(k).types.forEach(t => { types[t] = (types[t] || 0) + 1; }));
-      return `<div class="view-head"><h2>Mi equipo · ${esc(getGame(state.gameId).name)}</h2></div>
-        <div class="panel two">
-          <div><h2>BST total</h2><div class="bignum" style="${over ? 'color:var(--no)' : ''}">${total}${state.budget != null ? ` <small style="font-size:1rem;color:var(--muted)">/ ${state.budget}</small>` : ''}</div>
-            <p class="hint">${keys.length} Pokémon · media ${Math.round(total / keys.length)}${over ? ' · ⚠ por encima del presupuesto' : ''}</p></div>
-          <div><h2>Tipos del equipo</h2><div class="types">${Object.entries(types).map(([t, n]) => { const d = TYPES[t] || [t, '#888', '#fff']; return `<span class="t" style="background:${d[1]};color:${d[2]}">${esc(d[0])}${n > 1 ? ' ×' + n : ''}</span>`; }).join('')}</div></div>
-        </div>
-        <div class="teamgrid">${keys.map(k => { const m = dex.byKey.get(k); return `<div class="tcard">${spr(m)}<div><a href="#/pokemon/${encodeURIComponent(k)}">${esc(m.name)}</a>${typeTags(m.types)}<small>BST ${m.bst}</small></div><button class="x" type="button" data-rm="${esc(k)}" aria-label="Quitar ${esc(m.name)}">×</button></div>`; }).join('')}</div>
-        <div><button type="button" class="ghost small danger" data-clear>Vaciar equipo</button></div>`;
-    },
-    click(e) {
-      const rm = e.target.closest('[data-rm]');
-      if (rm) { state.team[state.gameId] = teamKeys().filter(k => k !== rm.dataset.rm); persist(); route(true); }
-      if (e.target.closest('[data-clear]') && confirm('¿Vaciar el equipo de este juego?')) { state.team[state.gameId] = []; persist(); route(true); }
-    }
-  };
-
   views.reglas = {
     html: () => {
       const game = getGame(state.gameId); const dex = curDex();
@@ -904,19 +863,12 @@ a.mon{text-decoration:none;color:inherit}
             <label class="radio"><input type="radio" name="mode" value="self"><span>El del Pokémon tal cual lo encuentras</span></label>
             <label class="radio"><input type="radio" name="mode" value="final"><span>El de su evolución más fuerte</span></label>
           </fieldset>
-          <label class="field"><span>Presupuesto BST del equipo <small>(opcional, suma de capturas)</small></span><input id="budgetIn" type="number" inputmode="numeric" min="0" placeholder="Sin presupuesto"></label>
         </section>
         <section class="panel">
           <h2>Juego</h2>
           <p><b>${esc(game.name)}</b></p>
           <p class="hint" style="margin-top:4px">${game.source === 'pokeapi' ? `Estadísticas y tipos de la generación ${GEN_ROMAN[game.gen]}${game.gen === 1 ? ' (Especial único)' : ''}.` : esc(game.note || '')} ${dex.list.length} Pokémon disponibles.</p>
           ${game.source === 'pokeapi' ? '<label class="check"><input type="checkbox" id="showAll"><span>Mostrar también Pokémon fuera de la Pokédex del juego <small>(intercambios, Pokédex nacional…)</small></span></label>' : ''}
-          <div class="row">
-            <label class="btn ghost small" for="fileIn">Cargar pokemon.txt propio</label>
-            <input id="fileIn" type="file" accept=".txt,text/plain" hidden>
-            ${game.source === 'custom' ? '<button id="delCustom" class="ghost small danger" type="button">Eliminar este juego</button>' : ''}
-          </div>
-          <p class="hint" style="margin-top:12px">Los juegos de Pokémon Essentials (como Añil) se leen de su <code>pokemon.txt</code>; el archivo cargado se guarda solo en tu navegador.</p>
         </section>
       </div>`;
     },
@@ -924,7 +876,6 @@ a.mon{text-decoration:none;color:inherit}
     sync() {
       $('#maxIn').value = state.max == null ? '' : state.max;
       $('#minIn').value = state.min == null ? '' : state.min;
-      $('#budgetIn').value = state.budget == null ? '' : state.budget;
       const sa = $('#showAll'); if (sa) sa.checked = state.showAll;
       document.querySelectorAll('input[name=mode]').forEach(r => { r.checked = r.value === state.mode; });
       document.querySelectorAll('#presets button').forEach(b => b.classList.toggle('on', +b.dataset.p === state.max));
@@ -932,33 +883,16 @@ a.mon{text-decoration:none;color:inherit}
     input(e) {
       if (e.target.id === 'maxIn') state.max = numOrNull(e.target.value);
       else if (e.target.id === 'minIn') state.min = numOrNull(e.target.value);
-      else if (e.target.id === 'budgetIn') state.budget = numOrNull(e.target.value);
       else return;
       persist(); document.querySelectorAll('#presets button').forEach(b => b.classList.toggle('on', +b.dataset.p === state.max));
     },
     change(e) {
       if (e.target.name === 'mode') { state.mode = e.target.value; dexCache && dexCache.bestCache.clear(); persist(); }
       else if (e.target.id === 'showAll') { state.showAll = e.target.checked; dexCache = null; ui.selected = null; persist(); route(true); }
-      else if (e.target.id === 'fileIn') this.upload(e.target);
     },
     click(e) {
       const st = e.target.closest('[data-step]'); if (st) { state.max = Math.max(0, (state.max || 0) + (+st.dataset.step)); persist(); this.sync(); }
       const pr = e.target.closest('[data-p]'); if (pr) { state.max = +pr.dataset.p; persist(); this.sync(); }
-      if (e.target.id === 'delCustom') {
-        const g = getGame(state.gameId);
-        if (g.source === 'custom' && confirm(`¿Eliminar «${g.name}» de tu navegador?`)) {
-          delete state.custom[g.id]; delete state.team[g.id]; state.gameId = defaults.gameId; dexCache = null; ui.selected = null; persist(); renderGameSelect(); route(true);
-        }
-      }
-    },
-    async upload(input) {
-      const f = input.files[0]; input.value = ''; if (!f) return;
-      const pokemon = window.Essentials.parse(await f.text());
-      if (!pokemon.length) { alert('No se encontraron Pokémon con BaseStats en ese archivo. ¿Es un pokemon.txt de Pokémon Essentials?'); return; }
-      const name = (prompt('Nombre para este juego:', f.name.replace(/\.[^.]+$/, '')) || '').trim(); if (!name) return;
-      const id = 'custom-' + Date.now().toString(36);
-      state.custom[id] = { id, name, pokemon }; state.gameId = id; ui.selected = null; dexCache = null;
-      persist(); renderGameSelect(); route(true);
     }
   };
 
@@ -976,8 +910,7 @@ a.mon{text-decoration:none;color:inherit}
     if (v.mount) v.mount(arg);
     const tab = name === 'pokemon' ? 'pokedex' : name;
     document.querySelectorAll('#tabs a').forEach(a => a.toggleAttribute('aria-current', false) || (a.dataset.tab === tab && a.setAttribute('aria-current', 'page')));
-    const n = teamKeys().length; $('#teamCount').textContent = n ? String(n) : '';
-    const m = { validador: 'Validador', pokedex: 'Pokédex', pokemon: 'Ficha', equipo: 'Equipo', reglas: 'Reglas' }[name];
+    const m = { validador: 'Validador', pokedex: 'Pokédex', pokemon: 'Ficha', reglas: 'Reglas' }[name];
     document.title = `${m} · Pokédex BST para Lockes`;
     if (!keepScroll) window.scrollTo(0, 0);
   }
@@ -985,14 +918,6 @@ a.mon{text-decoration:none;color:inherit}
 
   // delegación de eventos en la vista
   ['input', 'change', 'click', 'keydown'].forEach(type => view.addEventListener(type, e => {
-    if (type === 'click') {
-      const add = e.target.closest('[data-add]');
-      if (add && !add.disabled) {
-        const t = teamKeys(); if (!t.includes(add.dataset.add)) t.push(add.dataset.add); persist();
-        if (current === views.validador) { views.validador.update(); $('#teamCount').textContent = String(t.length); } else route(true);
-        return;
-      }
-    }
     if (current && current[type]) current[type](e);
   }));
 
@@ -1012,8 +937,6 @@ a.mon{text-decoration:none;color:inherit}
     }
     const fan = filtered.filter(x => x.source === 'essentials');
     if (fan.length) html += `<div class="game-group-label">Fan games (Essentials)</div>${fan.map(x => `<button type="button" role="option" class="game-option ${x.id === selected.id ? 'selected' : ''}" aria-selected="${x.id === selected.id}" data-game="${esc(x.id)}">${gameIcon(x)}<span>${esc(x.name)}</span></button>`).join('')}`;
-    const cu = filtered.filter(x => x.source === 'custom');
-    if (cu.length) html += `<div class="game-group-label">Mis juegos cargados</div>${cu.map(x => `<button type="button" role="option" class="game-option ${x.id === selected.id ? 'selected' : ''}" aria-selected="${x.id === selected.id}" data-game="${esc(x.id)}">${gameIcon(x)}<span>${esc(x.name)}</span></button>`).join('')}`;
     menu.innerHTML = `<label class="game-search"><span class="sr">Buscar juego</span><input id="gameSearch" type="search" placeholder="Buscar juego…" autocomplete="off" value="${esc(ui.gameQ)}"></label>${html || '<p class="game-empty">No se encontraron juegos.</p>'}`;
   }
   function chooseGame(id) {

@@ -62,8 +62,6 @@ button.danger{color:var(--no)}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
 .chips button{font-size:.8rem;padding:4px 10px;min-height:32px;border-radius:99px}
 .chips button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.team{display:grid;gap:8px}
-.team .empty{font-size:.88rem;color:var(--muted)}
 .tm{display:grid;grid-template-columns:44px 1fr auto auto;align-items:center;gap:8px;background:var(--surface2);border-radius:10px;padding:4px 8px 4px 4px}
 .tm img,.tm .nospr{width:44px;height:44px;image-rendering:pixelated;object-fit:contain}
 .tm b{font-size:.92rem;display:block;line-height:1.2;cursor:pointer}
@@ -222,10 +220,6 @@ a.mon{text-decoration:none;color:inherit}
 .form-card b{display:block;line-height:1.15}
 .form-card small{display:block;color:var(--muted)}
 .form-card .form-tag{margin-top:4px}
-.teamgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
-.tcard{display:grid;grid-template-columns:56px 1fr auto;gap:8px;align-items:center;background:var(--surface2);border-radius:12px;padding:4px 8px 4px 4px}
-.tcard img,.tcard .nospr{width:56px;height:56px;image-rendering:pixelated;object-fit:contain}
-.tcard a{color:inherit;text-decoration:none;font-weight:650}
 .tcard .x{border:0;background:transparent;font-size:1.2rem;color:var(--muted)}
 .bignum{font-size:2rem;font-weight:800}
 @media (max-width:900px){.two{grid-template-columns:1fr}}
