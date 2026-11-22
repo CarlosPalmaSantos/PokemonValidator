@@ -1,0 +1,14 @@
+{
+  "name": "pokemon-validator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Validador de capturas para lockes basado en BST",
+  "type": "commonjs",
+  "scripts": {
+    "data:pokeapi": "node scripts/build-pokeapi.js",
+    "data:essentials": "node scripts/build-essentials.js",
+    "data": "npm run data:pokeapi && npm run data:essentials",
+    "build": "node scripts/bundle.js"
+  },
+  "engines": { "node": ">=18" }
+}

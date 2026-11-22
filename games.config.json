@@ -1,0 +1,13 @@
+{
+  "_comentario": "Para añadir un fan game de Essentials: copia su pokemon.txt a /essentials, añade una entrada aquí y ejecuta `npm run data:essentials && npm run build`.",
+  "essentials": [
+    {
+      "id": "anil",
+      "name": "Añil",
+      "file": "essentials/anil.txt",
+      "formsFile": "essentials/anil_forms.txt",
+      "nationalLimit": 1025,
+      "note": "Datos de Pokémon Essentials (incluye fakemon sin sprite)."
+    }
+  ]
+}

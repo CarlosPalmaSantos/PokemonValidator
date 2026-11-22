@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pokédex BST para Lockes</title>
+<meta name="description" content="Pokédex por juego con tipos, evoluciones y validador de capturas según el BST para tu locke.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23e3350d'/%3E%3Cpath d='M2 16h28' stroke='%23222' stroke-width='3'/%3E%3Cpath d='M2 16a14 14 0 0 0 28 0z' fill='%23fff'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23fff' stroke='%23222' stroke-width='3'/%3E%3C/svg%3E">
+<style>
+/*STYLE*/
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="#/validador">
+      <span class="ball" aria-hidden="true"></span>
+      <span><b>Pokédex BST</b><small>Locke helper</small></span>
+    </a>
+    <div class="gamepick">
+      <span class="sr">Juego</span>
+      <button id="gameSel" class="game-select" type="button" aria-haspopup="listbox" aria-expanded="false"></button>
+      <div id="gameMenu" class="game-menu" role="listbox" hidden></div>
+    </div>
+    <button id="themeBtn" class="ghost" type="button" aria-label="Cambiar tema claro/oscuro">◐ Tema</button>
+  </div>
+  <nav class="wrap tabs" id="tabs" aria-label="Secciones">
+    <a href="#/validador" data-tab="validador">Validador</a>
+    <a href="#/pokedex" data-tab="pokedex">Pokédex</a>
+    <a href="#/equipo" data-tab="equipo">Mi equipo <span class="count" id="teamCount"></span></a>
+    <a href="#/reglas" data-tab="reglas">Reglas</a>
+  </nav>
+</header>
+
+<main class="wrap page" id="view" tabindex="-1"></main>
+
+<footer class="wrap foot">Estadísticas y tipos de <a href="https://pokeapi.co" target="_blank" rel="noopener">PokeAPI</a> (con los cambios por generación) y de Pokémon Essentials para los fan games. Sprites de <a href="https://github.com/PokeAPI/sprites" target="_blank" rel="noopener">PokeAPI/sprites</a>. Los métodos de evolución de los juegos oficiales son los actuales de PokeAPI. En Gen I el Especial cuenta una vez en el BST.</footer>
+
+<script id="app-data" type="application/json">/*DATA*/</script>
+<script>
+/*SCRIPT*/
+</script>
+</body>
+</html>
